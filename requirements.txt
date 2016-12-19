@@ -1,0 +1,12 @@
+beautifulsoup4==4.5.1
+funcsigs==1.0.2
+mock==2.0.0
+numpy==1.11.2
+pbr==1.10.0
+Pillow==3.4.0
+protobuf==3.0.0b2
+requests==2.12.4
+scipy==0.18.1
+six==1.10.0
+tensorflow==0.10.0
+wikipedia==1.4.0
