@@ -3,12 +3,12 @@ import numpy as np
 from copy import deepcopy
 
 class Game(object):
-    screen_size = (16, 16)
+    screen_size = (8, 8)
     bowl_size = 3
     rock_prob = 0.15
     
-    def __init__(self):
-        pass
+    def __init__(self, negative_rewards=False):
+        self.negative_rewards = negative_rewards
     
     def initial_state(self):
         return {
@@ -34,14 +34,14 @@ class Game(object):
         elif action == 'left':
             newstate['player_x'] = max(0, newstate['player_x'] - 1)
         # calculate reward:
-        reward = 0.5
+        reward = 0
         for rock in newstate['rocks']:
             if rock['y'] == self.screen_size[1] - 1:
                 dist = abs(rock['x'] - newstate['player_x'])
                 if dist <= (self.bowl_size - 1)/2:
-                    reward *= 2
+                    reward += 1
                 else:
-                    reward = 0
+                    reward -= 1 if self.negative_rewards else 0
         
         return newstate, reward
     
@@ -67,9 +67,18 @@ class Game(object):
     def create_rock(self):
         return {"x": random.randint(0, self.screen_size[0] - 1), "y": 0}
 
+class BigGame(Game):
+    def __init__(self):
+        self.screen_size = (16, 16)
+        self.negative_rewards = False
+
 class EasyGame(Game):
     def create_rock(self):
         return {"x": 0, "y": 0}
+
+class MiddleGame(Game):
+    def create_rock(self):
+        return {"x": 4, "y": 0} 
 
 if __name__ == '__main__':
     g = EasyGame()

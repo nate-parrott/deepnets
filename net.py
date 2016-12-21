@@ -4,8 +4,12 @@ import math
 import os
 import datetime
 
+# https://www.tensorflow.org/how_tos/summaries_and_tensorboard/
+# tensorboard --logdir=logs/rocks2
+# open localhost:6006
+
 class Net(object):
-    def __init__(self, dir_path=None, **kwargs):
+    def __init__(self, dir_path=None, log_path=None, **kwargs):
         
         for k, v in kwargs.iteritems():
             setattr(self, k, v)
@@ -29,6 +33,11 @@ class Net(object):
                 print "Restored model from checkpoint {0}".format(ckpt.model_checkpoint_path)
         else:
             self.saver = None
+        
+        if log_path:
+            self.train_writer = tf.train.SummaryWriter(log_path, self.session.graph)
+        else:
+            self.train_writer = None
         
     def setup(self):
         raise NotImplementedError("Subclasses should implement setup()")

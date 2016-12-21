@@ -3,3 +3,4 @@ model/
 data/
 venv/
 cache/
+logs/

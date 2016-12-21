@@ -13,8 +13,8 @@ def one_hot(idx, size):
     v[idx] = 1
     return v
 
-def rand_variable(shape):
-    initial = tf.truncated_normal(shape, stddev=0.1)
+def rand_variable(shape, stddev=0.1):
+    initial = tf.truncated_normal(shape, stddev=stddev)
     return tf.Variable(initial)
 
 def load_image(filename, size):
@@ -26,8 +26,9 @@ def load_image(filename, size):
     pix = np.array(background.getdata()).reshape(pic.size[0], pic.size[1], 3) / 255.0
     return pix
 
-def weight_var(shape, init_zero=False):
-    initial = tf.truncated_normal(shape, stddev=0 if init_zero else 0.1)
+def weight_var(shape, init_zero=False, stddev=0.1):
+    if init_zero: stddev = 0
+    initial = tf.truncated_normal(shape, stddev=stddev)
     return tf.Variable(initial)
 
 def show_image(arr, path=None):
