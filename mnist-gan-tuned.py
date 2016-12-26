@@ -33,7 +33,7 @@ class GAN(Net):
                 
         patch_size = 5
         
-        def create_conv(input, in_channels, out_channels, weight_set=[]):
+        def create_conv(input, in_channels, out_channels, weight_set=[], patch_size=2):
             input = batch_norm(input, variables_collections=[weight_set])
             w = weight_var([patch_size, patch_size, in_channels, out_channels])
             b = weight_var([out_channels])
@@ -44,7 +44,7 @@ class GAN(Net):
             activation = leaky_relu(conv + b)
             return activation
         
-        def create_deconv(input, in_channels, out_channels, input_image_size, weight_set=[], no_bias=False, use_weight_bias_pair=None):
+        def create_deconv(input, in_channels, out_channels, input_image_size, weight_set=[], no_bias=False, use_weight_bias_pair=None, patch_size=2):
             # # reverse max-pooling using densely connected layer:
             # dense = tf.reshape(input, [-1, in_channels * image_size**2])
             # new_image_size = image_size*2
@@ -80,7 +80,7 @@ class GAN(Net):
             x = tf.matmul(input, w)
             return leaky_relu(x + b) if relu else x + b
         
-        def create_conv_with_pooling(input, in_channels, out_channels, weight_set=[]):
+        def create_conv_with_pooling(input, in_channels, out_channels, weight_set=[], patch_size=2):
             w = weight_var([patch_size, patch_size, in_channels, out_channels])
             b = weight_var([out_channels], init_zero=True)
             conv = tf.nn.conv2d(input, w, strides=[1,1,1,1], padding='SAME')
@@ -96,15 +96,14 @@ class GAN(Net):
         
         # create generator:
         gen_weights = []
-        patch_size = 3
         # noise_input = tf.Print(noise_input, [noise_input], 'noise input:')
-        gen = create_dense(noise_input, self.noise_size, 7 * 7 * 8, gen_weights, no_bias=False)
+        gen = create_dense(noise_input, self.noise_size, 7 * 7 * 8, gen_weights)
         # gen = tf.Print(gen, [gen], 'gen:')
         # gen = tf.nn.dropout(gen, 0.7)
         gen = tf.reshape(gen, [-1, 7, 7, 8]) # 7 x 7 x 8
         # gen = tf.nn.dropout(gen, 0.7)
-        gen = create_deconv(gen, 8, 6, 7, gen_weights, no_bias=False) # 14 x 14 x 6
-        gen = create_deconv(gen, 6, 1, 14, gen_weights, no_bias=False) # 28 x 28 x 1
+        gen = create_deconv(gen, 8, 6, 7, gen_weights, patch_size=4) # 14 x 14 x 6
+        gen = create_deconv(gen, 6, 1, 14, gen_weights, patch_size=4) # 28 x 28 x 1
         
         # create discriminator input:
         real_image_input_reshaped = tf.reshape(real_image_input, [-1, self.input_size, self.input_size, 1])
@@ -113,8 +112,8 @@ class GAN(Net):
         
         # create discriminator:
         disc_weights = []
-        disc = create_conv_with_pooling(disc_input, 1, 8, disc_weights) # now 14 x 14 x 8
-        disc = create_conv_with_pooling(disc, 8, 16, disc_weights) # now 7 x 7 x 16
+        disc = create_conv_with_pooling(disc_input, 1, 8, disc_weights, patch_size=3) # now 14 x 14 x 8
+        disc = create_conv_with_pooling(disc, 8, 16, disc_weights, patch_size=3) # now 7 x 7 x 16
         disc = tf.reshape(disc, [-1, 7 * 7 * 16])
         output = tf.nn.softmax(create_dense(disc, 7 * 7 * 16, 2, disc_weights, disc_dropout=True))
         desired_output = tf.pack([use_real_image, 1 - use_real_image], axis=1)
@@ -122,7 +121,7 @@ class GAN(Net):
         correct = tf.equal(tf.argmax(output, 1), tf.argmax(desired_output, 1))
         disc_accuracy = tf.reduce_mean(tf.cast(correct, tf.float32))
         
-        optimizer = tf.train.AdamOptimizer(0.001)
+        optimizer = tf.train.AdamOptimizer(0.0001)
         disc_train_step = optimizer.minimize(loss, var_list=disc_weights)
         gen_train_step = optimizer.minimize(-loss, var_list=gen_weights)
         
@@ -187,28 +186,15 @@ class GAN(Net):
         })
         # print 'done generating images'
         return images
-    
-    def generate_images2(self, count=10):
-        image_paths = [os.path.join('emoji', name) for name in os.listdir('emoji') if name.endswith('.png')][:count]
-        images = np.array([load_image(path, 64) for path in image_paths])
-        noise = np.random.uniform(size=[count, self.noise_size])
-        use_real_image = np.full([count], 0)
-        images = self.session.run(self.disc_input, feed_dict={
-            self.real_image_input: images,
-            self.use_real_image: use_real_image,
-            self.disc_dropout_keep_prob: 1,
-            self.noise_input: noise
-        })
-        return images
 
-n = GAN(dir_path='model/mgan1')
+n = GAN(dir_path='model/mgan-gan-tuned')
 
 def train():
     test_in, test_out = load_dataset('t10k', noise=True)
     train_in, train_out = load_dataset('train', noise=True)
     train_batcher = batch_generator(train_in, train_in, size=64, random=True)
     test_batcher = batch_generator(test_in, test_in, size=128, random=True)
-    n.training_loop(train_batcher, test_batcher, evaluation_interval=10)
+    n.training_loop(train_batcher, test_batcher, evaluation_interval=20)
 
 def generate():
     while True:
